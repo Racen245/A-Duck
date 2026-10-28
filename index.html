@@ -3,54 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Brick Builder Workspace</title>
+    <title>Build a Duck</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #f0f0f0; font-family: sans-serif; touch-action: none; }
-        canvas { display: block; background-image: 
-            linear-gradient(to right, #e0e0e0 1px, transparent 1px),
-            linear-gradient(to bottom, #e0e0e0 1px, transparent 1px);
-            background-size: 40px 40px; background-color: white; }
-        
-        .ui-layer { 
-            position: absolute; 
-            top: 10px; 
-            width: 100%; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            pointer-events: none; 
-            gap: 15px;
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #f6f3ed;
+            font-family: Arial, Helvetica, sans-serif;
+            touch-action: none;
         }
 
-        .info { 
-            font-size: 18px; 
-            color: #0056b3; 
-            font-weight: bold; 
+        canvas {
+            display: block;
+            background-image:
+                linear-gradient(to right, #e3dfd7 1px, transparent 1px),
+                linear-gradient(to bottom, #e3dfd7 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-color: #fffdf9;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 14px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: auto;
+        }
+
+        .game-title {
+            font-size: 28px;
+            line-height: 1.1;
+            color: #d86f18;
+            font-weight: 800;
             text-align: center;
-            background: rgba(255, 255, 255, 0.7);
-            padding: 5px 15px;
-            border-radius: 20px;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.8);
         }
 
-        .btn { 
-            background: #d40000; 
-            color: white; 
-            border: none; 
-            padding: 10px 20px; 
-            border-radius: 5px; 
-            font-size: 14px; 
-            cursor: pointer; 
-            pointer-events: auto; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
-            font-weight: bold; 
+        .info {
+            max-width: calc(100% - 24px);
+            font-size: 17px;
+            line-height: 1.35;
+            color: #333;
+            font-weight: 600;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.94);
+            padding: 9px 18px;
+            border-radius: 22px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.12);
+            border: 1px solid rgba(0,0,0,0.08);
+        }
+
+        .btn, .lang-btn {
+            color: white;
+            border: none;
+            padding: 9px 16px;
+            border-radius: 9px;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+            font-weight: bold;
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        .btn {
+            background: #e67e22;
+        }
+
+        .lang-btn {
+            background: #4d6f8d;
+        }
+
+        .lang-btn.active {
+            background: #d86f18;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.22);
+        }
+
+        .btn:hover, .lang-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 9px rgba(0,0,0,0.20);
+        }
+
+        .btn:active, .lang-btn:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 600px) {
+            .game-title { font-size: 23px; }
+            .info { font-size: 15px; padding: 8px 13px; }
+            .btn, .lang-btn { font-size: 13px; padding: 8px 12px; }
         }
     </style>
 </head>
 <body>
 
 <div class="ui-layer">
-    <div class="info">Drag to move • Double-tap/click to rotate (90°)</div>
-    <button class="btn" onclick="resetPieces()">Reset Bricks</button>
+    <div class="game-title">Build a Duck</div>
+    <div class="info" id="instructions"></div>
+    <div class="toolbar">
+        <button class="btn" id="resetBtn" onclick="resetPieces()"></button>
+        <button class="lang-btn" id="esBtn" onclick="setLanguage('es')">Español</button>
+        <button class="lang-btn" id="enBtn" onclick="setLanguage('en')">English</button>
+    </div>
 </div>
 
 <canvas id="canvas"></canvas>
@@ -58,14 +124,16 @@
 <script>
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+let s = 1;
 
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    s = Math.min(canvas.width, canvas.height) / 7;
 }
 resize();
 
-const s = Math.min(canvas.width, canvas.height) / 7; 
+s = Math.min(canvas.width, canvas.height) / 7;
 
 let shapes = [];
 let draggingShape = null;
@@ -124,13 +192,39 @@ class Brick {
     }
 }
 
+let currentLanguage = 'en';
+
+const translations = {
+    en: {
+        title: 'Build a Duck',
+        instructions: 'Drag to move. Double tap/click to rotate.',
+        reset: 'Reset Bricks'
+    },
+    es: {
+        title: 'Crea un Pato',
+        instructions: 'Arrastra para mover las piezas. Doble click para girarlas.',
+        reset: 'Reiniciar piezas'
+    }
+};
+
+function setLanguage(language) {
+    currentLanguage = language;
+    const t = translations[currentLanguage];
+    document.querySelector('.game-title').textContent = t.title;
+    document.getElementById('instructions').textContent = t.instructions;
+    document.getElementById('resetBtn').textContent = t.reset;
+    document.getElementById('esBtn').classList.toggle('active', currentLanguage === 'es');
+    document.getElementById('enBtn').classList.toggle('active', currentLanguage === 'en');
+    document.documentElement.lang = currentLanguage;
+}
+
 function initShapes() {
     const W = canvas.width;
     const H = canvas.height;
     
     shapes = [
         // Left column
-        new Brick(0.5, 2, '#d40000', s*1.5, H*0.25), 
+        new Brick(0.5, 2, '#e67e22', s*1.5, H*0.25), 
         new Brick(1, 1, '#ffed00', s*1.5, H*0.55),    
         new Brick(1, 1, '#ffed00', s*1.5, H*0.85),    
 
@@ -138,7 +232,7 @@ function initShapes() {
         new Brick(1, 2, '#ffed00', W*0.5, s*3.5),    
 
         // Right column
-        new Brick(0.5, 2, '#d40000', W-s*1.5, H*0.3),
+        new Brick(0.5, 2, '#e67e22', W-s*1.5, H*0.3),
         new Brick(1, 1, '#ffed00', W-s*1.5, H*0.7, true) 
     ];
 }
@@ -197,6 +291,7 @@ window.addEventListener('mouseup', () => draggingShape = null);
 window.addEventListener('resize', () => { resize(); drawAll(); });
 
 initShapes();
+setLanguage(currentLanguage);
 drawAll();
 </script>
 </body>
